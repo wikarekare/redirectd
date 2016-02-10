@@ -17,8 +17,9 @@
 
 #include "redirectd.h"
 
-#define PORT 81
-#define REDIRECT_TO "10.0.1.102"
+#define PORT 80
+#define IP_ADDRESS "10.0.1.103"
+#define REDIRECT_TO "admin2.wikarekare.org" //"10.0.1.102"
 #define LINUX
 
 int run = 1;
@@ -123,7 +124,7 @@ socklen_t addr_len;
 	printf("setsockopt failed: ignoring this\n");
 
     record.sin_family = AF_INET;
-    record.sin_addr.s_addr = INADDR_ANY;
+    record.sin_addr.s_addr = inet_addr(IP_ADDRESS); //INADDR_ANY;
     record.sin_port = htons(PORT);
     if(bind(s, (struct sockaddr *)&record, sizeof(record)) == -1)
     {   printf("bind failed %d\n",errno);
@@ -213,10 +214,12 @@ char url[128];
 	switch( token_to_num(Commands, strtok(buf, " \t")) )
 	{
 		case GET:
-			send_redirect_header(sd, strtok(0,  " \t"));
+			//send_redirect_header(sd, strtok(0,  " \t"));
+			send_307_redirect_header(sd, strtok(0,  " \t"));
 			break;
 		case GET_HEAD:
-			send_redirect_header(sd, strtok(0,  " \t"));
+			//send_redirect_header(sd, strtok(0,  " \t"));
+			send_307_redirect_header(sd, strtok(0,  " \t"));
 			break;
 		default:
 			send_error(sd, 400);
@@ -258,6 +261,23 @@ time_t t;
 	else
 		perror("fdopen");
 	
+}
+
+/*send 307 redirect, which is a preserving version of 302 temporary redirect*/
+void send_307_redirect_header(int sd, char *url)
+{
+FILE *fp;
+  if( url[0] == '/' )
+    url++;
+  if((fp = fdopen(sd, "w")) != 0)
+  {
+    fprintf(fp,"HTTP/1.1 307 Found\n");
+    fprintf(fp,"Location: //%s/%s\n", REDIRECT_TO, url);
+    fflush(fp);
+    fclose(fp);
+  }
+  else
+    perror("fdopen");
 }
 
 /*Redirect HTML message*/
